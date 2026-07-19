@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="color-scheme" content="light only" />
+<meta name="supported-color-schemes" content="light" />
+<title>Life Ledger</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, -apple-system, sans-serif; background: #EAF4FC; color: #000; -webkit-tap-highlight-color: transparent; }
+  .serif { font-family: Georgia, 'Times New Roman', serif; }
+  .mono { font-family: 'SF Mono', Consolas, Menlo, monospace; }
+  #app { display: flex; flex-direction: column; height: 100vh; }
+  header.topbar { display: none; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid #CFE3F5; background: #fff; flex-shrink: 0; }
+  .layout { display: flex; flex: 1; min-height: 0; }
+  aside { width: 220px; flex-shrink: 0; border-right: 1px solid #CFE3F5; background: #fff; padding: 24px 16px; display: flex; flex-direction: column; }
+  aside .logo { font-size: 20px; line-height: 1.2; margin-bottom: 4px; }
+  aside .sub { font-size: 10px; color: #000; margin-bottom: 24px; letter-spacing: 0.05em; }
+  nav.sidenav { display: flex; flex-direction: column; gap: 4px; }
+  nav.sidenav button, nav.bottomnav button { display: flex; align-items: center; gap: 10px; border: none; background: none; cursor: pointer; padding: 10px 12px; border-radius: 8px; font-size: 14px; color: #000; text-align: left; width: 100%; }
+  nav.sidenav button.active { background: #EAF4FC; color: #000; font-weight: 600; }
+  main { flex: 1; overflow-y: auto; padding: 24px 32px; max-width: 800px; }
+  nav.bottomnav { display: none; border-top: 1px solid #CFE3F5; background: #fff; justify-content: space-around; padding: 6px 4px; flex-shrink: 0; overflow-x: auto; }
+  nav.bottomnav button { flex-direction: column; gap: 2px; min-width: 50px; padding: 6px 4px; font-size: 9px; text-align: center; }
+  nav.bottomnav button.active { color: #000; }
+  .icon { width: 16px; height: 16px; display: inline-block; }
+  .section-header { display: flex; align-items: flex-end; justify-content: space-between; border-bottom: 1px solid #CFE3F5; padding-bottom: 16px; margin-bottom: 24px; flex-wrap: wrap; gap: 10px; }
+  .eyebrow { font-size: 11px; letter-spacing: 0.2em; color: #000; text-transform: uppercase; margin-bottom: 4px; }
+  .title { font-size: 28px; color: #000; }
+  .empty { border: 1px dashed #CFE3F5; border-radius: 8px; padding: 36px 16px; text-align: center; color: #000; font-size: 14px; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+  input, select, button.pill { background: #fff; border: 1px solid #DCD2AE; border-radius: 6px; padding: 9px 12px; color: #000; font-size: 14px; font-family: inherit; }
+  input::placeholder { color: #000; }
+  input:focus, select:focus { outline: none; border-color: #000; }
+  .btn { border: none; border-radius: 6px; padding: 9px 16px; color: #fff; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 14px; }
+  .flex1 { flex: 1; min-width: 140px; }
+  ul.list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+  ul.list li { display: flex; align-items: center; gap: 10px; background: #fff; border: 1px solid #CFE3F5; border-radius: 6px; padding: 10px 12px; }
+  .stat-grid { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 28px; }
+  .stat { flex: 1; min-width: 45%; text-align: left; background: #fff; border: 1px solid #CFE3F5; border-radius: 8px; padding: 10px 14px; cursor: pointer; }
+  .stat .label { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: #000; margin-bottom: 4px; }
+  .stat .value { font-size: 22px; font-family: 'SF Mono', Consolas, Menlo, monospace; }
+  .check { flex-shrink: 0; width: 20px; height: 20px; border-radius: 4px; border: 1px solid #B9B2A0; display: flex; align-items: center; justify-content: center; cursor: pointer; background: #fff; }
+  .check.done { background: #7FA986; border-color: #7FA986; color: #fff; }
+  .trash { margin-left: auto; background: none; border: none; color: #000; cursor: pointer; padding: 4px; }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
+  .cal-day-label { text-align: center; font-size: 10px; color: #000; text-transform: uppercase; }
+  .cal-cell { aspect-ratio: 1; border-radius: 6px; border: 1px solid #CFE3F5; background: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; font-family: 'SF Mono', monospace; font-size: 12px; color: #000; }
+  .cal-cell.done { background: #7FA986; border-color: #7FA986; color: #fff; }
+  .cal-cell.trade-cell.win { background: #E3F1E6; }
+  .cal-cell.trade-cell.loss { background: #F8E7E4; }
+  .cal-cell.trade-cell.selected { border: 2px solid #46648A; }
+  .cal-cell.today { box-shadow: inset 0 0 0 2px #46648A; }
+  .progress-bar { height: 6px; background: #E1EFFA; border-radius: 3px; overflow: hidden; }
+  .progress-fill { height: 100%; background: #D9A64E; }
+  .subtabs, .filter-row { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 20px; }
+  .subtabs button, .filter-row button { border: 1px solid #DCD2AE; background: #fff; color: #000; border-radius: 6px; padding: 6px 12px; font-size: 12px; cursor: pointer; font-family: 'SF Mono', monospace; }
+  .subtabs button.active, .filter-row button.active { border-color: #000; color: #000; background: #DCEEFB; }
+  .cat-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-bottom: 16px; }
+  .cat-grid .card { padding: 10px 14px; }
+  .card { background: #fff; border: 1px solid #CFE3F5; border-radius: 8px; }
+  table.sheet { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 480px; }
+  table.sheet thead th { background: #DCEEFB; font-family: 'SF Mono', monospace; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: #000; text-align: left; padding: 8px 12px; border-bottom: 1px solid #CFE3F5; }
+  table.sheet td { padding: 8px 12px; border-bottom: 1px solid #E1EFFA; color: #000; }
+  table.sheet tbody tr.odd { background: #F3F9FD; }
+  table.sheet tbody tr.entry-row { background: #EAF4FC; }
+  table.sheet td input, table.sheet td select { width: 100%; padding: 6px 8px; font-size: 13px; }
+  .sheet-wrap { overflow-x: auto; border: 1px solid #CFE3F5; border-radius: 8px; }
+  @media (max-width: 767px) {
+    header.topbar { display: flex; }
+    aside { display: none; }
+    nav.bottomnav { display: flex; }
+    main { padding: 16px; padding-bottom: 90px; max-width: 100%; }
+  }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+const uid = () => Math.random().toString(36).slice(2, 10);
+const todayStr = () => new Date().toISOString().slice(0,10);
+const fmtMoney = (n) => (n < 0 ? "-€" : "€") + Math.abs(n).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
+const sum = (arr) => arr.reduce((s,e)=>s+Number(e.amount||0),0);
+const esc = (s) => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+function bucketOf(dateStr) {
+  if (!dateStr) return "none";
+  const t = todayStr();
+  if (dateStr < t) return "overdue";
+  if (dateStr === t) return "today";
+  const diffDays = Math.round((new Date(dateStr) - new Date(t)) / 86400000);
+  if (diffDays <= 7) return "week";
+  if (diffDays <= 31) return "month";
+  return "later";
+}
+const BUCKETS = [["all","All"],["overdue","Overdue"],["today","Today"],["week","This week"],["month","This month"],["later","Later"],["none","No date"]];
+
+const STORAGE_KEY = "life-dashboard-offline-v2";
+let data = loadData();
+let tab = "overview";
+let financeSub = "summary";
+let todoStatusFilter = "open";
+let todoDeadlineFilter = "all";
+let goalDeadlineFilter = "all";
+let calCursor = (() => { const d = new Date(); return {year: d.getFullYear(), month: d.getMonth()}; })();
+let tradingCursor = (() => { const d = new Date(); return {year: d.getFullYear(), month: d.getMonth()}; })();
+let tradingSelected = todayStr();
+let tradingDraft = { wins: "", losses: "", pnl: "", notes: "" };
+let financeDrafts = {
+  income: { date: todayStr(), name: "", amount: "" },
+  investments: { date: todayStr(), name: "", amount: "" },
+  expenses: { date: todayStr(), name: "", category: "Living", amount: "" },
+};
+
+function loadData() {
+  const def = { todos: [], goals: [], finance: { income: [], investments: [], expenses: [] }, habits: [], workouts: {}, trading: {} };
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return def;
+    const parsed = JSON.parse(raw);
+    return { ...def, ...parsed, finance: { ...def.finance, ...(parsed.finance||{}) } };
+  } catch(e) { return def; }
+}
+function saveData() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch(e) { console.error("save failed", e); }
+  render();
+}
+
+const NAV = [
+  {id:"overview", label:"Overview"},
+  {id:"goals", label:"Goals"},
+  {id:"todo", label:"To-Do"},
+  {id:"finance", label:"Finances"},
+  {id:"productivity", label:"Habits"},
+  {id:"workouts", label:"Workouts"},
+  {id:"trading", label:"Trading"},
+];
+
+function svgIcon(name) {
+  const icons = {
+    overview: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
+    goals: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>',
+    todo: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 12l3 3 5-6"/>',
+    finance: '<rect x="2" y="6" width="20" height="13" rx="2"/><path d="M2 10h20"/>',
+    productivity: '<path d="M3 17l6-6 4 4 8-8"/>',
+    workouts: '<path d="M6 6v12M18 6v12M2 10h4v4H2zM18 10h4v4h-4zM6 12h12"/>',
+    trading: '<path d="M3 3v18h18"/><path d="M18 17V9M13 17V5M8 17v-3"/>',
+  };
+  return `<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${icons[name]||""}</svg>`;
+}
+function header(eyebrow, title, actionHtml) {
+  return `<div class="section-header"><div><div class="eyebrow">${eyebrow}</div><h1 class="title serif">${title}</h1></div>${actionHtml||""}</div>`;
+}
+function empty(text) { return `<div class="empty">${text}</div>`; }
+function filterRowHtml(value, onChangeFn) {
+  return `<div class="filter-row">${BUCKETS.map(([id,label]) =>
+    `<button class="${value===id?'active':''}" onclick="${onChangeFn}('${id}')">${label}</button>`).join("")}</div>`;
+}
+
+// ---------- Overview ----------
+function renderOverview() {
+  const openTodos = data.todos.filter(t=>!t.done);
+  const dueToday = openTodos.filter(t=>bucketOf(t.due)==="today");
+  const overdue = openTodos.filter(t=>bucketOf(t.due)==="overdue");
+  const income = sum(data.finance.income), investments = sum(data.finance.investments), expenses = sum(data.finance.expenses);
+  const net = income - expenses;
+  const activeGoals = data.goals.filter(g=>g.progress<100);
+  const monthPrefix = todayStr().slice(0,7);
+  const workoutsThisMonth = Object.keys(data.workouts).filter(d=>d.startsWith(monthPrefix)&&data.workouts[d]).length;
+
+  const stat = (label, value, color, gotoTab) =>
+    `<button class="stat" onclick="goTab('${gotoTab}')"><div class="label">${label}</div><div class="value" style="color:#000">${value}</div></button>`;
+
+  const focusItems = [...overdue, ...dueToday].slice(0,6).map(t =>
+    `<li><span style="width:8px;height:8px;border-radius:50%;background:${bucketOf(t.due)==='overdue'?'#D97F72':'#7C9CC0'}"></span><span style="font-size:14px">${esc(t.text)}</span></li>`
+  ).join("");
+
+  const goalItems = activeGoals.slice(0,4).map(g => `
+    <li style="display:block;background:none;border:none;padding:0">
+      <div style="display:flex;justify-content:space-between;font-size:14px;margin-bottom:4px">
+        <span>${esc(g.title)}</span><span class="mono" style="color:#000">${g.progress}%</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${g.progress}%"></div></div>
+    </li>`).join("");
+
+  return header("Command Center","Overview") + `
+    <div class="stat-grid">
+      ${stat("Net this month", fmtMoney(net), net>=0?'#4F7358':'#B2564A', 'finance')}
+      ${stat("Invested", fmtMoney(investments), '#A9762F', 'finance')}
+      ${stat("Tasks due today", dueToday.length, '#46648A', 'todo')}
+      ${stat("Overdue", overdue.length, overdue.length?'#B2564A':'#000', 'todo')}
+      ${stat("Active goals", activeGoals.length, '#A9762F', 'goals')}
+      ${stat("Workouts this month", workoutsThisMonth, '#46648A', 'workouts')}
+    </div>
+    <div style="display:grid;grid-template-columns:1fr;gap:24px" class="md-grid-2">
+      <div>
+        <div class="eyebrow" style="color:#000">Today's focus</div>
+        ${focusItems ? `<ul class="list">${focusItems}</ul>` : empty("Nothing due today. Add a task to get moving.")}
+      </div>
+      <div>
+        <div class="eyebrow" style="color:#000">Goals in motion</div>
+        ${goalItems ? `<ul class="list" style="gap:14px">${goalItems}</ul>` : empty("No active goals yet.")}
+      </div>
+    </div>`;
+}
+
+// ---------- To-Do ----------
+function renderTodo() {
+  const statusBtns = ["open","done","all"].map(f =>
+    `<button class="pill" onclick="setTodoStatus('${f}')" style="border-color:${todoStatusFilter===f?'#46648A':'#DCD2AE'};color:${todoStatusFilter===f?'#46648A':'#8A8267'}">${f}</button>`
+  ).join("");
+
+  const list = data.todos
+    .filter(t => todoStatusFilter==="open" ? !t.done : todoStatusFilter==="done" ? t.done : true)
+    .filter(t => todoDeadlineFilter==="all" ? true : bucketOf(t.due)===todoDeadlineFilter)
+    .sort((a,b)=>(a.due||"9999").localeCompare(b.due||"9999"));
+
+  const items = list.map(t => {
+    const bucket = bucketOf(t.due);
+    return `<li>
+      <div class="check ${t.done?'done':''}" onclick="toggleTodo('${t.id}')">${t.done?'✓':''}</div>
+      <span style="flex:1;font-size:14px;${t.done?'text-decoration:line-through;color:#000':''}">${esc(t.text)}</span>
+      ${t.due?`<span class="mono" style="font-size:12px;color:#000">${t.due}</span>`:''}
+      <button class="trash" onclick="removeTodo('${t.id}')">✕</button>
+    </li>`;
+  }).join("");
+
+  return header("Task Ledger","To-Do",`<div class="row" style="margin:0">${statusBtns}</div>`) + `
+    <div class="row">
+      <input id="todo-text" class="flex1" placeholder="Add a task..." onkeydown="if(event.key==='Enter')addTodo()">
+      <input id="todo-due" type="date">
+      <button class="btn" style="background:#46648A" onclick="addTodo()">+ Add</button>
+    </div>
+    <div class="eyebrow" style="color:#000">Filter by deadline</div>
+    ${filterRowHtml(todoDeadlineFilter, 'setTodoDeadline')}
+    ${items ? `<ul class="list">${items}</ul>` : empty("No tasks match this filter.")}
+  `;
+}
+
+// ---------- Goals ----------
+function renderGoals() {
+  const list = data.goals
+    .filter(g => goalDeadlineFilter==="all" ? true : bucketOf(g.deadline)===goalDeadlineFilter)
+    .sort((a,b)=>(a.deadline||"9999").localeCompare(b.deadline||"9999"));
+
+  const items = list.map(g => {
+    const bucket = bucketOf(g.deadline);
+    return `<li style="display:block;padding:14px 16px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;flex-wrap:wrap;gap:8px">
+        <div>
+          <div style="font-weight:600">${esc(g.title)}</div>
+          <div class="mono" style="font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:#000">
+            ${esc(g.category)}${g.deadline?` <span style="color:#000">· due ${g.deadline}</span>`:''}
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span class="mono" style="font-size:14px;color:#000">${g.progress}%</span>
+          <button class="trash" style="margin:0" onclick="removeGoal('${g.id}')">✕</button>
+        </div>
+      </div>
+      <input type="range" min="0" max="100" value="${g.progress}" style="width:100%" oninput="setGoalProgress('${g.id}', this.value)">
+    </li>`;
+  }).join("");
+
+  return header("Long Game","Goals") + `
+    <div class="row">
+      <input id="goal-title" class="flex1" placeholder="Name a goal..." onkeydown="if(event.key==='Enter')addGoal()">
+      <select id="goal-cat">${["Personal","Career","Health","Finance","Learning"].map(c=>`<option>${c}</option>`).join("")}</select>
+      <input id="goal-deadline" type="date">
+      <button class="btn" style="background:#D9A64E;color:#000" onclick="addGoal()">+ Add</button>
+    </div>
+    <div class="eyebrow" style="color:#000">Filter by deadline</div>
+    ${filterRowHtml(goalDeadlineFilter, 'setGoalDeadline')}
+    ${items ? `<ul class="list">${items}</ul>` : empty("No goals match this filter.")}
+  `;
+}
+
+// ---------- Finance (spreadsheet) ----------
+function sheetHtml(key, columns, items, accent, categories) {
+  const draft = financeDrafts[key];
+  const rows = [...items].reverse().map((row, i) => `
+    <tr class="${i%2===0?'':'odd'}">
+      ${columns.map(c => `<td style="${c.align==='right'?'text-align:right;font-family:monospace;color:#000':''}">${c.key==='amount'?fmtMoney(row.amount):esc(row[c.key]||'—')}</td>`).join("")}
+      <td><button class="trash" style="margin:0" onclick="removeFinanceRow('${key}','${row.id}')">✕</button></td>
+    </tr>`).join("");
+
+  const entryCells = columns.map(c => {
+    if (c.key === "amount") return `<td><input type="number" value="${draft.amount}" placeholder="0.00" style="text-align:right;font-family:monospace" onkeydown="if(event.key==='Enter')submitFinance('${key}')" oninput="updateDraft('${key}','amount',this.value)"></td>`;
+    if (c.key === "category" && categories) return `<td><select onchange="updateDraft('${key}','category',this.value)">${categories.map(cat=>`<option ${draft.category===cat?'selected':''}>${cat}</option>`).join("")}</select></td>`;
+    if (c.key === "date") return `<td><input type="date" value="${draft.date}" oninput="updateDraft('${key}','date',this.value)"></td>`;
+    return `<td><input value="${esc(draft.name)}" placeholder="Type here..." onkeydown="if(event.key==='Enter')submitFinance('${key}')" oninput="updateDraft('${key}','name',this.value)"></td>`;
+  }).join("");
+
+  return `<div class="sheet-wrap"><table class="sheet">
+    <thead><tr>${columns.map(c=>`<th style="${c.align==='right'?'text-align:right':''}">${c.label}</th>`).join("")}<th style="width:32px"></th></tr></thead>
+    <tbody>
+      ${rows || `<tr><td colspan="${columns.length+1}" style="text-align:center;color:#000;font-family:monospace;font-size:12px">No rows yet — add one below.</td></tr>`}
+      <tr class="entry-row">${entryCells}<td><button class="btn" style="background:${accent};padding:6px 10px" onclick="submitFinance('${key}')">+</button></td></tr>
+    </tbody>
+  </table></div>`;
+}
+
+function renderFinance() {
+  const income = sum(data.finance.income), investments = sum(data.finance.investments), expenses = sum(data.finance.expenses);
+  const net = income - expenses;
+  const byCategory = {};
+  data.finance.expenses.forEach(e => { byCategory[e.category] = (byCategory[e.category]||0) + Number(e.amount||0); });
+
+  const subTabs = [["summary","Summary"],["salary","Salary"],["investments","Investments"],["expenses","Expenses"]]
+    .map(([id,label]) => `<button class="${financeSub===id?'active':''}" onclick="setFinanceSub('${id}')">${label}</button>`).join("");
+
+  let body = "";
+  if (financeSub === "summary") {
+    const cats = Object.entries(byCategory).map(([cat,amt]) =>
+      `<div class="mono" style="font-size:12px;background:#fff;border:1px solid #CFE3F5;border-radius:6px;padding:6px 12px;color:#000">${esc(cat)}: <span style="color:#000">${fmtMoney(amt)}</span></div>`
+    ).join("");
+    body = `<div class="eyebrow" style="color:#000">Expenses by category</div>` +
+      (cats ? `<div style="display:flex;flex-wrap:wrap;gap:8px">${cats}</div>` : empty("Log an expense to see the breakdown."));
+  } else if (financeSub === "salary") {
+    body = sheetHtml("income", [{key:"date",label:"Date"},{key:"name",label:"Source"},{key:"amount",label:"Amount",align:"right"}], data.finance.income, "#4F7358");
+  } else if (financeSub === "investments") {
+    body = sheetHtml("investments", [{key:"date",label:"Date"},{key:"name",label:"Description"},{key:"amount",label:"Amount",align:"right"}], data.finance.investments, "#A9762F");
+  } else if (financeSub === "expenses") {
+    body = sheetHtml("expenses", [{key:"date",label:"Date"},{key:"name",label:"Item"},{key:"category",label:"Category"},{key:"amount",label:"Amount",align:"right"}], data.finance.expenses, "#B2564A", ["Living","Food","Transport","Fun","Bills","Other"]);
+  }
+
+  return header("The Books","Finances") + `
+    <div class="cat-grid">
+      <div class="card"><div class="eyebrow" style="color:#000;margin-bottom:4px">Salary</div><div class="mono" style="font-size:20px;color:#000">${fmtMoney(income)}</div></div>
+      <div class="card"><div class="eyebrow" style="color:#000;margin-bottom:4px">Investments</div><div class="mono" style="font-size:20px;color:#000">${fmtMoney(investments)}</div></div>
+      <div class="card"><div class="eyebrow" style="color:#000;margin-bottom:4px">Expenses</div><div class="mono" style="font-size:20px;color:#000">${fmtMoney(expenses)}</div></div>
+    </div>
+    <div class="card" style="padding:12px 16px;margin-bottom:24px;display:flex;justify-content:space-between;align-items:center">
+      <span class="mono" style="font-size:12px;text-transform:uppercase;color:#000">Net this month (salary − expenses)</span>
+      <span class="mono" style="font-size:18px;color:#000">${fmtMoney(net)}</span>
+    </div>
+    <div class="subtabs">${subTabs}</div>
+    ${body}
+  `;
+}
+
+// ---------- Productivity ----------
+function renderProductivity() {
+  const today = todayStr();
+  const items = data.habits.map(h => {
+    const doneToday = h.lastDone === today;
+    return `<li>
+      <div class="check" style="width:32px;height:32px;border-radius:50%;${doneToday?'background:#7FA986;border-color:#7FA986;color:#fff':''}" onclick="markHabit('${h.id}')">${doneToday?'✓':'🔥'}</div>
+      <span style="flex:1;font-size:14px">${esc(h.name)}</span>
+      <span class="mono" style="font-size:14px;color:#000">${h.streak||0}d streak</span>
+      <button class="trash" onclick="removeHabit('${h.id}')">✕</button>
+    </li>`;
+  }).join("");
+
+  return header("Daily Discipline","Productivity") + `
+    <div class="row">
+      <input id="habit-name" class="flex1" placeholder="Add a habit to track..." onkeydown="if(event.key==='Enter')addHabit()">
+      <button class="btn" style="background:#7FA986" onclick="addHabit()">+ Add</button>
+    </div>
+    ${items ? `<ul class="list">${items}</ul>` : empty("No habits yet. Track one daily practice to start a streak.")}
+  `;
+}
+
+// ---------- Workouts ----------
+function renderWorkouts() {
+  const {year, month} = calCursor;
+  const monthLabel = new Date(year, month, 1).toLocaleDateString(undefined,{month:'long',year:'numeric'});
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month+1, 0).getDate();
+  const key = (day) => `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+  let monthCount = 0;
+  for (let d=1; d<=daysInMonth; d++) if (data.workouts[key(d)]) monthCount++;
+  const todayKey = todayStr();
+
+  let cells = "";
+  for (let i=0;i<firstDay;i++) cells += `<div></div>`;
+  for (let d=1;d<=daysInMonth;d++) {
+    const k = key(d); const done = !!data.workouts[k]; const isToday = k === todayKey;
+    cells += `<button class="cal-cell ${done?'done':''} ${isToday&&!done?'today':''}" onclick="toggleWorkout(${d})">${d}${done?'<br>✓':''}</button>`;
+  }
+  const dayLabels = ["S","M","T","W","T","F","S"].map(d=>`<div class="cal-day-label">${d}</div>`).join("");
+
+  return header("Training Log","Workouts", `<span class="mono" style="font-size:12px;color:#000">${monthCount} this month</span>`) + `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <button class="pill" style="color:#000" onclick="shiftMonth(-1)">‹</button>
+      <div class="serif" style="font-size:18px">${monthLabel}</div>
+      <button class="pill" style="color:#000" onclick="shiftMonth(1)">›</button>
+    </div>
+    <div class="cal-grid" style="margin-bottom:8px">${dayLabels}</div>
+    <div class="cal-grid">${cells}</div>
+    <div style="margin-top:20px;display:flex;align-items:center;gap:8px" class="mono" style="font-size:11px;color:#000">
+      <span style="display:inline-block;width:12px;height:12px;border-radius:4px;background:#7FA986"></span> Worked out
+      <span style="display:inline-block;width:12px;height:12px;border-radius:4px;border:2px solid #46648A;margin-left:10px"></span> Today
+    </div>
+  `;
+}
+
+// ---------- Trading Journal ----------
+function renderTrading() {
+  const {year, month} = tradingCursor;
+  const monthLabel = new Date(year, month, 1).toLocaleDateString(undefined,{month:'long',year:'numeric'});
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month+1, 0).getDate();
+  const key = (day) => `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+  const trading = data.trading || {};
+
+  let monthWins = 0, monthLosses = 0, monthPnl = 0;
+  for (let d=1; d<=daysInMonth; d++) {
+    const e = trading[key(d)];
+    if (e) { monthWins += e.wins||0; monthLosses += e.losses||0; monthPnl += e.pnl||0; }
+  }
+  const totalTrades = monthWins + monthLosses;
+  const winRate = totalTrades > 0 ? Math.round((monthWins/totalTrades)*100) : null;
+  const todayKey = todayStr();
+
+  let cells = "";
+  for (let i=0;i<firstDay;i++) cells += `<div></div>`;
+  for (let d=1;d<=daysInMonth;d++) {
+    const k = key(d);
+    const e = trading[k];
+    const isToday = k === todayKey;
+    const isSelected = k === tradingSelected;
+    let bgClass = "";
+    if (e) bgClass = e.pnl > 0 ? "win" : e.pnl < 0 ? "loss" : "";
+    const pnlLabel = e && (e.wins||e.losses||e.pnl) ? `<br><span style="font-size:9px">${e.pnl>0?'+':''}${e.pnl}</span>` : "";
+    cells += `<button class="cal-cell trade-cell ${bgClass} ${isSelected?'selected':''} ${isToday&&!isSelected?'today':''}" onclick="selectTradingDay('${k}')">${d}${pnlLabel}</button>`;
+  }
+  const dayLabels = ["S","M","T","W","T","F","S"].map(d=>`<div class="cal-day-label">${d}</div>`).join("");
+
+  const existing = trading[tradingSelected];
+
+  return header("Trading Journal","Trading") + `
+    <div class="cat-grid">
+      <div class="card"><div class="eyebrow" style="color:#000;margin-bottom:4px">Month P&amp;L</div><div class="mono" style="font-size:18px;color:${monthPnl>=0?'#4F7358':'#B2564A'}">${fmtMoney(monthPnl)}</div></div>
+      <div class="card"><div class="eyebrow" style="color:#000;margin-bottom:4px">Trades (W/L)</div><div class="mono" style="font-size:18px;color:#000">${monthWins}/${monthLosses}</div></div>
+      <div class="card"><div class="eyebrow" style="color:#000;margin-bottom:4px">Win rate</div><div class="mono" style="font-size:18px;color:#000">${winRate===null?'—':winRate+'%'}</div></div>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <button class="pill" style="color:#000" onclick="shiftTradingMonth(-1)">‹</button>
+      <div class="serif" style="font-size:18px">${monthLabel}</div>
+      <button class="pill" style="color:#000" onclick="shiftTradingMonth(1)">›</button>
+    </div>
+    <div class="cal-grid" style="margin-bottom:8px">${dayLabels}</div>
+    <div class="cal-grid" style="margin-bottom:24px">${cells}</div>
+
+    <div class="card" style="padding:16px">
+      <div class="eyebrow" style="color:#000;margin-bottom:12px">${tradingSelected}</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px">
+        <div>
+          <label style="font-size:10px;text-transform:uppercase;font-family:monospace;color:#000;display:block;margin-bottom:4px">Winning trades</label>
+          <input type="number" min="0" id="trade-wins" value="${tradingDraft.wins}" oninput="updateTradingDraft('wins',this.value)" style="width:100%">
+        </div>
+        <div>
+          <label style="font-size:10px;text-transform:uppercase;font-family:monospace;color:#000;display:block;margin-bottom:4px">Losing trades</label>
+          <input type="number" min="0" id="trade-losses" value="${tradingDraft.losses}" oninput="updateTradingDraft('losses',this.value)" style="width:100%">
+        </div>
+        <div>
+          <label style="font-size:10px;text-transform:uppercase;font-family:monospace;color:#000;display:block;margin-bottom:4px">Daily P&amp;L (€)</label>
+          <input type="number" id="trade-pnl" value="${tradingDraft.pnl}" oninput="updateTradingDraft('pnl',this.value)" style="width:100%">
+        </div>
+      </div>
+      <label style="font-size:10px;text-transform:uppercase;font-family:monospace;color:#000;display:block;margin-bottom:4px">Journal — thoughts &amp; trades</label>
+      <textarea rows="4" id="trade-notes" oninput="updateTradingDraft('notes',this.value)" placeholder="What did you trade today? What worked, what didn't, how did you feel?" style="width:100%;resize:none;margin-bottom:12px;font-family:inherit">${esc(tradingDraft.notes)}</textarea>
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        ${existing ? `<button class="btn" style="background:#fff;border:1px solid #CFE3F5;color:#000" onclick="clearTradingDay()">Clear day</button>` : ""}
+        <button class="btn" style="background:#46648A" onclick="saveTradingDay()">Save day</button>
+      </div>
+    </div>
+  `;
+}
+
+
+function render() {
+  const navBtns = (cls) => NAV.map(n =>
+    `<button class="${tab===n.id ? 'active':''}" onclick="goTab('${n.id}')">${svgIcon(n.id)}<span>${n.label}</span></button>`
+  ).join("");
+
+  let content = "";
+  if (tab==="overview") content = renderOverview();
+  else if (tab==="goals") content = renderGoals();
+  else if (tab==="todo") content = renderTodo();
+  else if (tab==="finance") content = renderFinance();
+  else if (tab==="productivity") content = renderProductivity();
+  else if (tab==="workouts") content = renderWorkouts();
+  else if (tab==="trading") content = renderTrading();
+
+  const activeLabel = NAV.find(n=>n.id===tab).label;
+
+  document.getElementById("app").innerHTML = `
+    <header class="topbar">
+      <div class="serif" style="font-size:18px">Life Ledger</div>
+      <div class="mono" style="font-size:12px;color:#000;display:flex;align-items:center;gap:6px">${svgIcon(tab)}${activeLabel}</div>
+    </header>
+    <div class="layout">
+      <aside>
+        <div class="logo serif">Life<br>Ledger</div>
+        <div class="sub mono">personal control room · offline</div>
+        <nav class="sidenav">${navBtns('sidenav')}</nav>
+      </aside>
+      <main>${content}</main>
+    </div>
+    <nav class="bottomnav">${navBtns('bottomnav')}</nav>
+  `;
+
+  const mdGrid = document.querySelector('.md-grid-2');
+  if (mdGrid && window.innerWidth >= 768) mdGrid.style.gridTemplateColumns = '1fr 1fr';
+}
+
+// ---------- actions ----------
+function goTab(id) { tab = id; render(); }
+function setTodoStatus(f) { todoStatusFilter = f; render(); }
+function setTodoDeadline(f) { todoDeadlineFilter = f; render(); }
+function setGoalDeadline(f) { goalDeadlineFilter = f; render(); }
+function setFinanceSub(s) { financeSub = s; render(); }
+
+function addTodo() {
+  const textEl = document.getElementById("todo-text");
+  const dueEl = document.getElementById("todo-due");
+  if (!textEl.value.trim()) return;
+  data.todos.push({ id: uid(), text: textEl.value.trim(), done: false, due: dueEl.value || null });
+  saveData();
+}
+function toggleTodo(id) { const t = data.todos.find(t=>t.id===id); if(t) t.done = !t.done; saveData(); }
+function removeTodo(id) { data.todos = data.todos.filter(t=>t.id!==id); saveData(); }
+
+function addGoal() {
+  const titleEl = document.getElementById("goal-title");
+  const catEl = document.getElementById("goal-cat");
+  const deadlineEl = document.getElementById("goal-deadline");
+  if (!titleEl.value.trim()) return;
+  data.goals.push({ id: uid(), title: titleEl.value.trim(), category: catEl.value, progress: 0, deadline: deadlineEl.value || null });
+  saveData();
+}
+function setGoalProgress(id, val) { const g = data.goals.find(g=>g.id===id); if(g){ g.progress = Number(val); saveData(); } }
+function removeGoal(id) { data.goals = data.goals.filter(g=>g.id!==id); saveData(); }
+
+function updateDraft(key, field, value) { financeDrafts[key][field] = value; }
+function submitFinance(key) {
+  const draft = financeDrafts[key];
+  if (!draft.name || !draft.amount) return;
+  const entry = { id: uid(), date: draft.date, name: draft.name, amount: Number(draft.amount) };
+  if (draft.category) entry.category = draft.category;
+  data.finance[key].push(entry);
+  financeDrafts[key] = key === "expenses" ? { date: todayStr(), name: "", category: "Living", amount: "" } : { date: todayStr(), name: "", amount: "" };
+  saveData();
+}
+function removeFinanceRow(key, id) { data.finance[key] = data.finance[key].filter(e=>e.id!==id); saveData(); }
+
+function addHabit() {
+  const el = document.getElementById("habit-name");
+  if (!el.value.trim()) return;
+  data.habits.push({ id: uid(), name: el.value.trim(), streak: 0, lastDone: null });
+  saveData();
+}
+function markHabit(id) {
+  const h = data.habits.find(h=>h.id===id);
+  const today = todayStr();
+  if (h && h.lastDone !== today) { h.streak = (h.streak||0)+1; h.lastDone = today; saveData(); }
+}
+function removeHabit(id) { data.habits = data.habits.filter(h=>h.id!==id); saveData(); }
+
+function shiftMonth(delta) {
+  let {year, month} = calCursor;
+  month += delta;
+  if (month < 0) { month = 11; year -= 1; }
+  if (month > 11) { month = 0; year += 1; }
+  calCursor = {year, month};
+  render();
+}
+function toggleWorkout(day) {
+  const {year, month} = calCursor;
+  const k = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+  data.workouts[k] = !data.workouts[k];
+  saveData();
+}
+
+function shiftTradingMonth(delta) {
+  let {year, month} = tradingCursor;
+  month += delta;
+  if (month < 0) { month = 11; year -= 1; }
+  if (month > 11) { month = 0; year += 1; }
+  tradingCursor = {year, month};
+  render();
+}
+function selectTradingDay(dateStr) {
+  tradingSelected = dateStr;
+  const existing = (data.trading || {})[dateStr];
+  tradingDraft = existing ? { wins: existing.wins, losses: existing.losses, pnl: existing.pnl, notes: existing.notes || "" } : { wins: "", losses: "", pnl: "", notes: "" };
+  render();
+}
+function updateTradingDraft(field, value) { tradingDraft[field] = value; }
+function saveTradingDay() {
+  if (!data.trading) data.trading = {};
+  data.trading[tradingSelected] = {
+    wins: Number(tradingDraft.wins) || 0,
+    losses: Number(tradingDraft.losses) || 0,
+    pnl: Number(tradingDraft.pnl) || 0,
+    notes: tradingDraft.notes || "",
+  };
+  saveData();
+}
+function clearTradingDay() {
+  if (data.trading) delete data.trading[tradingSelected];
+  tradingDraft = { wins: "", losses: "", pnl: "", notes: "" };
+  saveData();
+}
+
+render();
+window.addEventListener('resize', render);
+</script>
+</body>
+</html>
